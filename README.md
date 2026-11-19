@@ -17,6 +17,15 @@ All three projects are kept open source (MIT).
 > OpenAI key and the same graph calls a real LLM for planning and
 > drafting — no code change needed.
 
+## Demo
+
+Screenshot of a real run (mock mode, no API key) — task "Summarize Teja's
+AI experience for an AI Engineer role", showing the plan, the run log for
+every graph step, the tool calls, and the final structured answer with
+citations:
+
+![LangGraph agent run: plan, run log, tool calls, and final structured answer](docs/screenshot-agent-run.png)
+
 ## The graph
 
 ```
