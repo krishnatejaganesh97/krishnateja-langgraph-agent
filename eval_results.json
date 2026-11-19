@@ -1,0 +1,213 @@
+{
+  "mode": "mock",
+  "passed": 5,
+  "total": 5,
+  "results": [
+    {
+      "task": "Summarize Teja's AI experience for an AI Engineer role",
+      "expected_keyword": "langchain",
+      "has_keyword": true,
+      "citations": [
+        "about-teja.md",
+        "rag-vs-finetuning.md",
+        "technobot.md"
+      ],
+      "cites_used_in_text": true,
+      "structured_ok": true,
+      "nodes_seen": [
+        "critique",
+        "draft",
+        "finalize",
+        "plan",
+        "research"
+      ],
+      "graph_ok": true,
+      "revisions": 0,
+      "revisions_ok": true,
+      "pass": true,
+      "final": {
+        "summary": "He is looking for AI Developer or AI Engineer roles, remote or onsite in Minnesota or Chicago, where he can build RAG, agentic, and LLM-powered products end to end. [about-teja.md] Teja worked at Technobot LLC in Minnesota as an AI Developer and Full Stack Developer from May 2024 to April 2026. [technobot.md]",
+        "key_points": [
+          "He is looking for AI Developer or AI Engineer roles, remote or onsite in Minnesota or Chicago, where he can build RAG, agentic, and LLM-powered products end to end. [about-teja.md]",
+          "Teja worked at Technobot LLC in Minnesota as an AI Developer and Full Stack Developer from May 2024 to April 2026. [technobot.md]",
+          "# RAG vs fine-tuning \u2014 local knowledge note (generic AI knowledge, not Teja's work) [rag-vs-finetuning.md]",
+          "At Technobot, Teja built AI forecasting and vendor-selection features with OpenAI GPT and LangChain. [technobot.md]",
+          "Teja is a software developer with 4+ years of experience shipping production applications. [about-teja.md]"
+        ],
+        "citations": [
+          "about-teja.md",
+          "rag-vs-finetuning.md",
+          "technobot.md"
+        ],
+        "confidence": "high",
+        "limitations": "This answer is based only on the local knowledge files; it does not use live web sources, and it cannot verify facts that are not in those files.",
+        "mode": "mock"
+      }
+    },
+    {
+      "task": "Compare RAG vs fine-tuning for a doc chatbot",
+      "expected_keyword": "rag",
+      "has_keyword": true,
+      "citations": [
+        "about-teja.md",
+        "rag-vs-finetuning.md"
+      ],
+      "cites_used_in_text": true,
+      "structured_ok": true,
+      "nodes_seen": [
+        "critique",
+        "draft",
+        "finalize",
+        "plan",
+        "research"
+      ],
+      "graph_ok": true,
+      "revisions": 0,
+      "revisions_ok": true,
+      "pass": true,
+      "final": {
+        "summary": "# RAG vs fine-tuning \u2014 local knowledge note (generic AI knowledge, not Teja's work) [rag-vs-finetuning.md] For a doc chatbot, RAG is usually the better first choice: it grounds answers\nin the documents, provides citations, and is easy to update. [rag-vs-finetuning.md]",
+        "key_points": [
+          "# RAG vs fine-tuning \u2014 local knowledge note (generic AI knowledge, not Teja's work) [rag-vs-finetuning.md]",
+          "For a doc chatbot, RAG is usually the better first choice: it grounds answers\nin the documents, provides citations, and is easy to update. [rag-vs-finetuning.md]",
+          "Fine-tuning can\nbe added later for style or format, and the two can be combined: fine-tune for\nhow to answer, retrieve for what to answer. [rag-vs-finetuning.md]",
+          "He is looking for AI Developer or AI Engineer roles, remote or onsite in Minnesota or Chicago, where he can build RAG, agentic, and LLM-powered products end to end. [about-teja.md]"
+        ],
+        "citations": [
+          "about-teja.md",
+          "rag-vs-finetuning.md"
+        ],
+        "confidence": "high",
+        "limitations": "This answer is based only on the local knowledge files; it does not use live web sources, and it cannot verify facts that are not in those files.",
+        "mode": "mock"
+      }
+    },
+    {
+      "task": "Where does Teja study for his PhD?",
+      "expected_keyword": "cumberlands",
+      "has_keyword": true,
+      "citations": [
+        "about-teja.md",
+        "elite-tech.md",
+        "rag-vs-finetuning.md",
+        "technobot.md"
+      ],
+      "cites_used_in_text": true,
+      "structured_ok": true,
+      "nodes_seen": [
+        "critique",
+        "draft",
+        "finalize",
+        "plan",
+        "research"
+      ],
+      "graph_ok": true,
+      "revisions": 0,
+      "revisions_ok": true,
+      "pass": true,
+      "final": {
+        "summary": "Krishna Teja Ganesh is a full-time PhD researcher in Artificial Intelligence at the University of the Cumberlands. [about-teja.md] Teja worked at Elite Tech Info Inc in McKinney, Texas as a Software Developer from October 2023 to May 2024. [elite-tech.md]",
+        "key_points": [
+          "Krishna Teja Ganesh is a full-time PhD researcher in Artificial Intelligence at the University of the Cumberlands. [about-teja.md]",
+          "Teja worked at Elite Tech Info Inc in McKinney, Texas as a Software Developer from October 2023 to May 2024. [elite-tech.md]",
+          "Teja worked at Technobot LLC in Minnesota as an AI Developer and Full Stack Developer from May 2024 to April 2026. [technobot.md]",
+          "# RAG vs fine-tuning \u2014 local knowledge note (generic AI knowledge, not Teja's work) [rag-vs-finetuning.md]",
+          "At Elite Tech Info, Teja customized ServiceNow portals and automated IT asset management workflows. [elite-tech.md]"
+        ],
+        "citations": [
+          "about-teja.md",
+          "elite-tech.md",
+          "rag-vs-finetuning.md",
+          "technobot.md"
+        ],
+        "confidence": "high",
+        "limitations": "This answer is based only on the local knowledge files; it does not use live web sources, and it cannot verify facts that are not in those files.",
+        "mode": "mock"
+      }
+    },
+    {
+      "task": "What did Teja build at Elite Tech Info?",
+      "expected_keyword": "servicenow",
+      "has_keyword": true,
+      "citations": [
+        "about-teja.md",
+        "elite-tech.md",
+        "technobot.md"
+      ],
+      "cites_used_in_text": true,
+      "structured_ok": true,
+      "nodes_seen": [
+        "critique",
+        "draft",
+        "finalize",
+        "plan",
+        "research"
+      ],
+      "graph_ok": true,
+      "revisions": 0,
+      "revisions_ok": true,
+      "pass": true,
+      "final": {
+        "summary": "Teja worked at Elite Tech Info Inc in McKinney, Texas as a Software Developer from October 2023 to May 2024. [elite-tech.md] Teja reported to Satyam B at Elite Tech Info, and started on October 3, 2023. [elite-tech.md]",
+        "key_points": [
+          "Teja worked at Elite Tech Info Inc in McKinney, Texas as a Software Developer from October 2023 to May 2024. [elite-tech.md]",
+          "Teja reported to Satyam B at Elite Tech Info, and started on October 3, 2023. [elite-tech.md]",
+          "At Elite Tech Info, Teja customized ServiceNow portals and automated IT asset management workflows. [elite-tech.md]",
+          "Teja holds a Master of Science in Information Technology Services Administration and Management from Concordia University, St. [about-teja.md]",
+          "Teja worked at Technobot LLC in Minnesota as an AI Developer and Full Stack Developer from May 2024 to April 2026. [technobot.md]"
+        ],
+        "citations": [
+          "about-teja.md",
+          "elite-tech.md",
+          "technobot.md"
+        ],
+        "confidence": "high",
+        "limitations": "This answer is based only on the local knowledge files; it does not use live web sources, and it cannot verify facts that are not in those files.",
+        "mode": "mock"
+      }
+    },
+    {
+      "task": "What programming languages does Teja use?",
+      "expected_keyword": "python",
+      "has_keyword": true,
+      "citations": [
+        "about-teja.md",
+        "elite-tech.md",
+        "rag-vs-finetuning.md",
+        "technobot.md"
+      ],
+      "cites_used_in_text": true,
+      "structured_ok": true,
+      "nodes_seen": [
+        "critique",
+        "draft",
+        "finalize",
+        "plan",
+        "research"
+      ],
+      "graph_ok": true,
+      "revisions": 0,
+      "revisions_ok": true,
+      "pass": true,
+      "final": {
+        "summary": "His programming languages and frameworks include Python, JavaScript, React.js, Java, C#, .NET Core, Spring Boot, and SQL. [about-teja.md] RAG is cheaper to update: add or replace a\ndocument and the next answer can use it, with no retraining. [rag-vs-finetuning.md]",
+        "key_points": [
+          "His programming languages and frameworks include Python, JavaScript, React.js, Java, C#, .NET Core, Spring Boot, and SQL. [about-teja.md]",
+          "RAG is cheaper to update: add or replace a\ndocument and the next answer can use it, with no retraining. [rag-vs-finetuning.md]",
+          "Teja worked at Elite Tech Info Inc in McKinney, Texas as a Software Developer from October 2023 to May 2024. [elite-tech.md]",
+          "Teja worked at Technobot LLC in Minnesota as an AI Developer and Full Stack Developer from May 2024 to April 2026. [technobot.md]",
+          "# RAG vs fine-tuning \u2014 local knowledge note (generic AI knowledge, not Teja's work) [rag-vs-finetuning.md]"
+        ],
+        "citations": [
+          "about-teja.md",
+          "elite-tech.md",
+          "rag-vs-finetuning.md",
+          "technobot.md"
+        ],
+        "confidence": "high",
+        "limitations": "This answer is based only on the local knowledge files; it does not use live web sources, and it cannot verify facts that are not in those files.",
+        "mode": "mock"
+      }
+    }
+  ]
+}
