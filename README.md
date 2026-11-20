@@ -1,11 +1,11 @@
-# Teja LangGraph Agent — Product 2
+# Krishnateja LangGraph Agent — Product 2
 
 A working **multi-step agentic workflow**, built to learn by building.
 Give it a research or job-search task — it plans the steps, calls tools
 to retrieve evidence, drafts a structured answer, critiques its own
 draft, revises if needed, and returns a final answer with citations.
 
-This is Product 2 of 3 in Teja's 60-day plan to get an AI job in 1–2 months:
+This is Product 2 of 3 in Krishnateja's 60-day plan to get an AI job in 1–2 months:
 Product 1 is a RAG doc chatbot (`../krishnateja-rag-chatbot/`), Product 3 is a
 PhD research paper agent — reads a pile of papers, summarizes them, finds
 contradictions, and builds a literature review outline with citations.
@@ -19,7 +19,7 @@ All three projects are kept open source (MIT).
 
 ## Demo
 
-Screenshot of a real run (mock mode, no API key) — task "Summarize Teja's
+Screenshot of a real run (mock mode, no API key) — task "Summarize Krishnateja's
 AI experience for an AI Engineer role", showing the plan, the run log for
 every graph step, the tool calls, and the final structured answer with
 citations:
@@ -40,10 +40,15 @@ Runs in mock mode with no API key. Note: the free tier sleeps after
 ## The graph
 
 ```
-START → plan → research → draft → critique
+START → plan → research → verify_quotes → draft → critique
                                    ├─ issues found, revisions < 2 → revise → draft (again)
                                    └─ no issues / max revisions → finalize → END
 ```
+
+`verify_quotes` is the expiry guard (added 2026-11-20 for CJ Lee's
+expired-quote test — see below): it checks every vendor quote's expiry
+date *before* drafting, drops expired quotes from the shortlist, and
+logs the exclusion. With no quotes in the task it is a logged no-op.
 
 Every node appends to a run log, so you can watch the agent think:
 the plan, each tool call and what it returned, the draft, the critique,
@@ -55,13 +60,18 @@ any revision, and the final structured answer.
 krishnateja-langgraph-agent/
 ├── backend/
 │   ├── agent.py       # LangGraph graph, state, nodes, structured output, LLM client
+│   ├── quotes.py      # Vendor-quote expiry guard: verify_quotes, shortlist_vendors
 │   ├── tools.py       # Tools: retrieve_docs, local_search, format_structured
 │   ├── main.py        # FastAPI app: /health, /run, /tasks, /
 │   └── eval.py        # Eval script: 5 tasks, checks structure + citations + graph
+├── tests/
+│   └── test_expired_quote.py  # CJ Lee's expired-quote test (mock mode)
+├── docs/
+│   └── expired-quote-test-RESULTS.md  # Honest results of that test
 ├── frontend/
 │   └── index.html     # Single-page UI: plan, run log, tool calls, final answer
 ├── data/
-│   └── knowledge/     # Local knowledge — Teja's own public facts only
+│   └── knowledge/     # Local knowledge — Krishnateja's own public facts only
 │       ├── about-teja.md, technobot.md, elite-tech.md
 │       └── rag-vs-finetuning.md   # generic AI knowledge note
 ├── requirements.txt
@@ -85,9 +95,9 @@ python -m uvicorn backend.main:app --reload --port 8001
 ```
 
 Try these tasks in the UI (or with curl):
-- "Summarize Teja's AI experience for an AI Engineer role"
+- "Summarize Krishnateja's AI experience for an AI Engineer role"
 - "Compare RAG vs fine-tuning for a doc chatbot"
-- "Where does Teja study for his PhD?"
+- "Where does Krishnateja study for his PhD?"
 
 ```bash
 curl -s http://localhost:8001/health
@@ -101,6 +111,44 @@ curl -s -X POST http://localhost:8001/run \
 ```bash
 python backend/eval.py
 # Expected in mock mode: 5/5 passed. Writes eval_results.json.
+```
+
+## Expired-quote test (CJ Lee, 2026-11-20)
+
+Choongjing (CJ) Lee, founder of Artificial Beings, suggested this test in a
+comment on Krishnateja's LinkedIn Post 1: give the agent two vendor quotes, mark
+the cheaper one expired yesterday, run the shortlist twice switching models
+halfway, and see whether either shortlist still offers the expired price.
+
+The agent now has a `verify_quotes` guard node (`backend/quotes.py` +
+`backend/agent.py: verify_quotes_node`) that checks every quote's expiry
+date in plain Python *before* drafting — so the result cannot change when
+the model switches — drops expired quotes from the shortlist, and logs the
+exclusion. The critique node is a backstop: if an expired price somehow
+reaches the draft, it sends the graph back to revise. Full honest results
+(including the pre-guard failure) are in
+[`docs/expired-quote-test-RESULTS.md`](docs/expired-quote-test-RESULTS.md).
+
+```bash
+python tests/test_expired_quote.py
+# As of 2026-11-20: Vendor A $850 expired 2026-11-19 (yesterday),
+# Vendor B $1,200 valid until 2026-12-31.
+# Expected: baseline (naive cheapest-first) FAILS by offering $850;
+# Run 1 (mock-model-a) PASS and Run 2 (mock-model-b) PASS —
+# both shortlist Vendor B at $1,200 and never offer $850.
+```
+
+You can also try it over the API — quotes as structured input, or written
+in the task text (the guard parses `Vendor A: $850, valid until 2026-11-19`):
+
+```bash
+curl -s -X POST http://localhost:8001/run \
+  -H 'Content-Type: application/json' \
+  -d '{"task": "Shortlist vendors. Pick the cheapest valid vendor.",
+       "quotes": [{"vendor": "Vendor A", "price": 850, "valid_until": "2026-11-19"},
+                  {"vendor": "Vendor B", "price": 1200, "valid_until": "2026-12-31"}],
+       "as_of": "2026-11-20"}'
+# -> shortlist: Vendor B $1,200; excluded_quotes: Vendor A (expired 2026-11-19)
 ```
 
 ## Use a real LLM (optional)
@@ -196,11 +244,12 @@ did it stop?), not just the final text.
 - Structured outputs with Pydantic validation
 - FastAPI backend, same pattern as Product 1
 - Evals that test the workflow, not just the output
+- A deterministic guard node: quote expiry verified in code before drafting, so a model switch can't change the outcome (CJ Lee's expired-quote test — both runs pass, see `docs/expired-quote-test-RESULTS.md`)
 - Open source (MIT), documented so another developer can run it
 
 ## Facts used in the knowledge files
 
-Only Teja's own public facts: PhD in AI at University of the Cumberlands
+Only Krishnateja's own public facts: PhD in AI at University of the Cumberlands
 (classes started May 2026, in progress); Technobot LLC, May 2024–Apr 2026,
 AI forecasting / vendor selection with OpenAI GPT + LangChain, React +
 .NET Core inventory app, Azure AD, real-time APIs, CI/CD; Elite Tech Info

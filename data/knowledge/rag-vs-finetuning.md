@@ -1,4 +1,4 @@
-# RAG vs fine-tuning — local knowledge note (generic AI knowledge, not Teja's work)
+# RAG vs fine-tuning — local knowledge note (generic AI knowledge, not Krishnateja's work)
 
 RAG (Retrieval-Augmented Generation) keeps a base LLM unchanged and gives it
 retrieved passages at prompt time. It is the right choice when the knowledge

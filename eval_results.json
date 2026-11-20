@@ -19,7 +19,8 @@
         "draft",
         "finalize",
         "plan",
-        "research"
+        "research",
+        "verify_quotes"
       ],
       "graph_ok": true,
       "revisions": 0,
@@ -59,7 +60,8 @@
         "draft",
         "finalize",
         "plan",
-        "research"
+        "research",
+        "verify_quotes"
       ],
       "graph_ok": true,
       "revisions": 0,
@@ -99,7 +101,8 @@
         "draft",
         "finalize",
         "plan",
-        "research"
+        "research",
+        "verify_quotes"
       ],
       "graph_ok": true,
       "revisions": 0,
@@ -141,7 +144,8 @@
         "draft",
         "finalize",
         "plan",
-        "research"
+        "research",
+        "verify_quotes"
       ],
       "graph_ok": true,
       "revisions": 0,
@@ -183,7 +187,8 @@
         "draft",
         "finalize",
         "plan",
-        "research"
+        "research",
+        "verify_quotes"
       ],
       "graph_ok": true,
       "revisions": 0,

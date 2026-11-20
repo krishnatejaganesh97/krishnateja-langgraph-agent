@@ -14,8 +14,11 @@
 #      on-task? supported?) and sends it back for revision, max 2 times.
 #   6. Evals — backend/eval.py runs 5 tasks and checks structure + citations.
 #
-# Graph:  plan -> research -> draft -> critique --(issues, <2 revisions)-->
-#         draft (revise) | --(ok / max revisions)--> finalize -> END
+# Graph:  plan -> research -> verify_quotes -> draft -> critique
+#         --(issues, <2 revisions)--> draft (revise)
+#         | --(ok / max revisions)--> finalize -> END
+# verify_quotes is the expiry guard (CJ Lee test): it drops expired
+# vendor quotes BEFORE drafting, so no expired price can be shortlisted.
 #
 # Modes (same as Product 1 — no code change to switch):
 #   mock   — no key set. Deterministic, labelled mock: extractive drafting
@@ -36,6 +39,7 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
+from backend import quotes as quote_guard  # noqa: E402
 from backend import tools  # noqa: E402
 
 MAX_REVISIONS = 2
@@ -112,6 +116,17 @@ class AgentState(TypedDict):
     final: dict
     mode: str
     log: Annotated[list[dict], add]
+    # Vendor-quote guard (CJ Lee expired-quote test): quotes supplied
+    # with the task (structured, or parsed from the task text), the
+    # as-of date expiry is judged against, and the guard's output.
+    # verify_quotes_node fills valid/excluded/shortlist; draft and
+    # critique read them, so an expired price can never reach the answer.
+    quotes: list[dict]
+    as_of: str
+    model_label: str
+    valid_quotes: list[dict]
+    excluded_quotes: list[dict]
+    shortlist: list[dict]
 
 
 def _log(state: dict, node: str, detail: str, tool_calls: Optional[list] = None) -> dict:
@@ -175,6 +190,107 @@ def research_node(state: dict) -> dict:
         f"Retrieved {len(evidence)} evidence chunks from "
         f"{sorted({d['source'] for d in evidence})}.",
         tool_calls=calls)}
+
+
+def verify_quotes_node(state: dict) -> dict:
+    """GUARD — verify quote expiry BEFORE shortlisting (CJ Lee test).
+
+    Runs after research, before draft, on every run. If the task carries
+    vendor quotes (structured `quotes` in state, or parseable from the
+    task text), each quote's valid_until is checked against `as_of`
+    (default: today) in plain Python — not by the LLM, so the result
+    cannot change when the model is switched halfway through. Expired
+    quotes are dropped from the shortlist, recorded in excluded_quotes
+    with a reason, and logged. Only valid quotes reach draft_node.
+    No quotes in the task -> no-op, logged as skipped.
+    """
+    from datetime import date as _date
+
+    raw = state.get("quotes") or []
+    parsed: list = []
+    if raw:
+        for q in raw:
+            try:
+                parsed.append(quote_guard.Quote(**q) if isinstance(q, dict)
+                              else q)
+            except Exception:
+                continue
+    if not parsed:
+        parsed = quote_guard.parse_quotes_from_task(state["task"])
+    if not parsed:
+        return {**_log(state, "verify_quotes",
+                       "No vendor quotes in this task — expiry check skipped.")}
+    as_of_str = state.get("as_of") or _date.today().isoformat()
+    try:
+        as_of = _date.fromisoformat(as_of_str)
+    except ValueError:
+        as_of = _date.today()
+        as_of_str = as_of.isoformat()
+    valid, excluded = quote_guard.verify_quotes(parsed, as_of=as_of)
+    shortlist = quote_guard.shortlist_vendors(valid)
+    detail = (
+        f"Verified {len(parsed)} vendor quote(s) as of {as_of_str} "
+        f"(model: {state.get('model_label') or detect_mode()}): "
+        f"{len(valid)} valid, {len(excluded)} expired."
+    )
+    if excluded:
+        detail += " Excluded (NOT shortlisted): " + "; ".join(
+            f"{e['vendor']} {e['price_display']} expired {e['valid_until']}"
+            for e in excluded) + "."
+    if shortlist:
+        detail += " Shortlist (cheapest valid first): " + ", ".join(
+            f"{s['vendor']} {s['price_display']}" for s in shortlist) + "."
+    return {
+        "quotes": [q.model_dump(mode="json") for q in parsed],
+        "as_of": as_of_str,
+        "valid_quotes": [q.model_dump(mode="json") for q in valid],
+        "excluded_quotes": excluded,
+        "shortlist": shortlist,
+        **_log(state, "verify_quotes", detail),
+    }
+
+
+def _vendor_draft(state: dict) -> dict:
+    """Mock drafting for a vendor-shortlist task: build the structured
+    answer from the GUARD's shortlist only. Expired quotes are never
+    read here — shortlist contains valid quotes only, and the excluded
+    prices are deliberately not rendered (only the vendor name + expiry
+    date go in `limitations`, via finalize_node, so the dead price is
+    never offered)."""
+    shortlist = state["shortlist"]
+    as_of = state.get("as_of", "")
+    cheapest = shortlist[0]
+    key_points = [
+        f"{i + 1}. {s['vendor']} — {s['price_display']}, valid until "
+        f"{s['valid_until']} [vendor-quotes]"
+        for i, s in enumerate(shortlist)
+    ]
+    # Critique requires >= 2 key points and a citation used in the text;
+    # with a single valid quote, add the verification step itself.
+    if len(key_points) < 2:
+        key_points.append(
+            f"All prices were verified against their expiry dates as of "
+            f"{as_of} before shortlisting, so no expired price is offered. "
+            f"[vendor-quotes]"
+        )
+    summary = (
+        f"Shortlist (verified as of {as_of}): the cheapest valid vendor "
+        f"is {cheapest['vendor']} at {cheapest['price_display']}, valid "
+        f"until {cheapest['valid_until']}. "
+        f"{len(shortlist)} valid quote(s) shortlisted. [vendor-quotes]"
+    )
+    return {
+        "summary": summary,
+        "key_points": key_points,
+        "citations": ["vendor-quotes"],
+        "confidence": "high",
+        "limitations": (
+            "Shortlist covers only the vendor quotes supplied with this "
+            "task, verified as of the as-of date above; it does not check "
+            "live vendor pricing or terms beyond the quoted expiry date."
+        ),
+        "mode": "mock",
+    }
 
 
 def _extractive_draft(task: str, evidence: list[dict]) -> dict:
@@ -247,6 +363,16 @@ def _extractive_draft(task: str, evidence: list[dict]) -> dict:
 
 
 def draft_node(state: dict) -> dict:
+    # Vendor-shortlist task: the guard has already decided what is
+    # valid. Draft ONLY from the verified shortlist — in mock AND real
+    # mode — so no LLM can re-introduce an expired price.
+    if state.get("shortlist"):
+        draft = _vendor_draft(state)
+        checked = tools.format_structured(draft)
+        assert checked["ok"], checked
+        return {"draft": checked["output"], **_log(
+            state, "draft",
+            "Drafted vendor shortlist from verified (unexpired) quotes only.")}
     task, evidence = state["task"], state["evidence"]
     mode = detect_mode()
     if mode != "mock":
@@ -283,6 +409,18 @@ def critique_node(state: dict) -> dict:
     back to draft (revise) or moves on to finalize."""
     draft, task = state["draft"], state["task"]
     issues: list[str] = []
+    # Expiry backstop (defence in depth): if an excluded quote's price
+    # somehow reached the draft, flag it — this sends the graph back to
+    # revise instead of finalizing a dead price.
+    draft_text = draft.get("summary", "") + " " + " ".join(draft.get("key_points", []))
+    for exc in state.get("excluded_quotes", []):
+        for price_str in {exc.get("price_display", ""), str(exc.get("price", ""))}:
+            if price_str and price_str in draft_text:
+                issues.append(
+                    f"Draft offers an expired quote price ({exc['vendor']} "
+                    f"{price_str}, expired {exc['valid_until']}) — "
+                    f"expired prices must never be shortlisted."
+                )
     if not draft.get("citations"):
         issues.append("No citations — an answer without sources is not trusted.")
     else:
@@ -313,6 +451,17 @@ def finalize_node(state: dict) -> dict:
         draft["limitations"] = (
             draft["limitations"]
             + f" Revised {state['revisions']} time(s) after self-critique."
+        )
+    # Transparency, without offering the dead price: name the excluded
+    # vendor and its expiry date, never its price.
+    if state.get("excluded_quotes"):
+        names = "; ".join(
+            f"{e['vendor']} (expired {e['valid_until']})"
+            for e in state["excluded_quotes"])
+        draft["limitations"] = (
+            draft["limitations"]
+            + f" Excluded {len(state['excluded_quotes'])} expired quote(s), "
+            f"not offered: {names}."
         )
     return {"final": draft, **_log(
         state, "finalize",
@@ -350,13 +499,15 @@ def build_graph():
     graph = StateGraph(AgentState)
     graph.add_node("plan", plan_node)
     graph.add_node("research", research_node)
+    graph.add_node("verify_quotes", verify_quotes_node)
     graph.add_node("draft", draft_node)
     graph.add_node("critique", critique_node)
     graph.add_node("revise", _revise_node)
     graph.add_node("finalize", finalize_node)
     graph.add_edge(START, "plan")
     graph.add_edge("plan", "research")
-    graph.add_edge("research", "draft")
+    graph.add_edge("research", "verify_quotes")
+    graph.add_edge("verify_quotes", "draft")
     graph.add_edge("draft", "critique")
     graph.add_conditional_edges("critique", _should_revise,
                                 {"revise": "revise", "finalize": "finalize"})
@@ -365,18 +516,40 @@ def build_graph():
     return graph.compile()
 
 
-def run_agent(task: str) -> dict:
-    """Run one task end to end. Returns {final, plan, log, tool_calls, mode, revisions}."""
+def run_agent(task: str, quotes: Optional[list[dict]] = None,
+              as_of: Optional[str] = None,
+              model_label: Optional[str] = None) -> dict:
+    """Run one task end to end. Returns {final, plan, log, tool_calls,
+    mode, revisions, shortlist, excluded_quotes, ...}.
+
+    quotes: optional list of {vendor, price, valid_until, ...} dicts —
+        the vendor quotes to shortlist. If omitted, quotes are parsed
+        from the task text when possible; with neither, the verify step
+        is a logged no-op and the graph behaves exactly as before.
+    as_of: ISO date expiry is judged against (default: today). The
+        expired-quote test passes an explicit date so it is
+        deterministic no matter when it runs.
+    model_label: label for the model used in this run, recorded in the
+        log and the result. In mock mode this *simulates* CJ Lee's
+        "switch models halfway" — two runs with different labels but
+        the same guard; with a real key, set OPENAI_MODEL / the Azure
+        deployment instead and the label records which one ran.
+    """
     graph = build_graph()
     initial: dict = {
         "task": task, "plan": [], "evidence": [], "tool_calls": [],
         "draft": {}, "critique": "", "critique_issues": [],
         "revisions": 0, "final": {}, "mode": detect_mode(), "log": [],
+        "quotes": quotes or [], "as_of": as_of or "",
+        "model_label": model_label or detect_mode(),
+        "valid_quotes": [], "excluded_quotes": [], "shortlist": [],
     }
     result = graph.invoke(initial)
     return {
         "task": task,
         "mode": detect_mode(),
+        "model_label": model_label or detect_mode(),
+        "as_of": result.get("as_of", as_of or ""),
         "plan": result.get("plan", []),
         "tool_calls": result.get("tool_calls", []),
         "evidence": result.get("evidence", []),
@@ -384,4 +557,30 @@ def run_agent(task: str) -> dict:
         "revisions": result.get("revisions", 0),
         "log": result.get("log", []),
         "final": result.get("final", {}),
+        "quotes": result.get("quotes", []),
+        "valid_quotes": result.get("valid_quotes", []),
+        "excluded_quotes": result.get("excluded_quotes", []),
+        "shortlist": result.get("shortlist", []),
+    }
+
+
+def run_vendor_shortlist(task: str, quotes: list[dict],
+                         as_of: Optional[str] = None,
+                         model_label: Optional[str] = None) -> dict:
+    """Convenience wrapper for vendor-shortlist tasks: same graph, but
+    the result is shaped around the shortlist. See tests/test_expired_quote.py
+    for the expired-quote test that uses this."""
+    out = run_agent(task, quotes=quotes, as_of=as_of, model_label=model_label)
+    return {
+        "task": task,
+        "model_label": out["model_label"],
+        "as_of": out["as_of"],
+        "shortlist": out["shortlist"],
+        "valid_quotes": out["valid_quotes"],
+        "excluded_quotes": out["excluded_quotes"],
+        "final": out["final"],
+        "critique": out["critique"],
+        "revisions": out["revisions"],
+        "log": out["log"],
+        "mode": out["mode"],
     }

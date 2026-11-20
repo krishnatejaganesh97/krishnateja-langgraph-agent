@@ -16,6 +16,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from typing import Optional
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -46,11 +48,22 @@ SAMPLE_TASKS = [
 class RunRequest(BaseModel):
     task: str = Field(..., min_length=3, max_length=1000,
                       description="The research / job-search task for the agent.")
+    # Optional vendor shortlist (CJ Lee expired-quote test): each quote is
+    # {vendor, price, valid_until (YYYY-MM-DD)}. The verify_quotes guard
+    # drops expired quotes before drafting. Omit for ordinary tasks.
+    quotes: Optional[list[dict]] = Field(
+        default=None, description="Vendor quotes to shortlist, if any.")
+    as_of: Optional[str] = Field(
+        default=None, description="ISO date expiry is judged against; default today.")
+    model_label: Optional[str] = Field(
+        default=None, description="Label for the model used, recorded in the run log.")
 
 
 class RunResponse(BaseModel):
     task: str
     mode: str
+    model_label: str = "mock"
+    as_of: str = ""
     plan: list[str]
     tool_calls: list[dict]
     evidence: list[dict]
@@ -58,12 +71,15 @@ class RunResponse(BaseModel):
     revisions: int
     log: list[dict]
     final: AgentOutput
+    shortlist: list[dict] = []
+    valid_quotes: list[dict] = []
+    excluded_quotes: list[dict] = []
 
 
 @app.get("/health")
 def health():
     return {"status": "ok", "mode": detect_mode(),
-            "graph": "plan -> research -> draft -> critique -> (revise | finalize)"}
+            "graph": "plan -> research -> verify_quotes -> draft -> critique -> (revise | finalize)"}
 
 
 @app.get("/tasks")
@@ -73,7 +89,9 @@ def tasks():
 
 @app.post("/run", response_model=RunResponse)
 def run(req: RunRequest):
-    return RunResponse(**run_agent(req.task))
+    return RunResponse(**run_agent(
+        req.task, quotes=req.quotes, as_of=req.as_of,
+        model_label=req.model_label))
 
 
 @app.get("/")
